@@ -1,0 +1,6 @@
+## Interface: 80000
+## Title: PHR
+## Author: Attenius
+## Version: 0.0.1
+## SavedVariablesPerCharacter: phrKeyVals
+main.lua
