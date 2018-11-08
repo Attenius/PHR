@@ -1,0 +1,5 @@
+phu = {}
+
+function phu:strip(s)
+    return (s:gsub("^%s*(.-)%s*$", "%1"))
+end
