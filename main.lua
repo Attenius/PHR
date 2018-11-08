@@ -1,7 +1,11 @@
+print('Welcome to PHR, an addon for tabletop-style roleplay! Type "/phr help" for a list of commands.')  -- TODO
+
 local frame = CreateFrame('Frame', 'PhrFrame')
 local events = {}
 
 function events:ADDON_LOADED(addonName)
+    if addonName ~= 'PHR' then return end
+
     print('PHR loaded')
     if phrKeyVals ~= nil then
         print('PHR keyvals')
@@ -10,6 +14,7 @@ function events:ADDON_LOADED(addonName)
         end
         return
     end
+
     print('PHR: loading defaults')
     phrKeyVals = {}
 end
@@ -20,11 +25,11 @@ SlashCmdList['PHROLL'] = function(subcommandText)
     total = 0
     for text in string.gmatch(subcommandText, "%S+") do
         if string.match(text, "%d*d%d+") then -- handles things that look like "d20", "2d20", "3d6", etc.
-            dIndex = string.find(text, 'd')[1] -- index of 'd' in '2d6'
+            dIndex = string.find(text, 'd') -- index of 'd' in '2d6'
             if dIndex == 1 then
                 count = 1
             else
-                count = tonumber(text:sub(1, dIndex + 1))
+                count = tonumber(text:sub(1, dIndex - 1))
             end
 
             upper = tonumber(text:sub(dIndex + 1))
@@ -36,10 +41,10 @@ SlashCmdList['PHROLL'] = function(subcommandText)
             rolls = {}
             for i=1,count do
                 rolledVal = math.random(1, upper)
-                table.insert(rolls, rolledVal)
+                rolls[#rolls + 1] = rolledVal
                 total = total + rolledVal
             end
-            table.insert(outTextRolls, text .. ' (' .. table.concat(rolls), "," .. ')')
+            outTextRolls[#outTextRolls + 1] = text .. ' (' .. table.concat(rolls, ",") .. ')'
         end
     end
     print(total .. ' = ' .. table.concat(outTextRolls, ' + '))
@@ -47,13 +52,15 @@ end
 
 SLASH_PHSET1 = '/phs'
 SlashCmdList['PHSET'] = function(subcommandText)
-    for k, v in string.gmatch(s, "(%w+)=(%w+)") do
-        v = tonumber(v)
-        if v == nil then
+    -- Set an arbitrary string key to a numerical value.
+    -- These key/value pairs are stored per-character.
+    for k, v in string.gmatch(subcommandText, "(%w+)=(%w+)") do
+        vnum = tonumber(v)
+        if vnum == nil then
             print("Unable to convert " .. v .. " to a number.")
         else
-            print("Setting " .. k .. " to " .. v)
-            phrKeyVals[k] = v
+            print("Setting " .. k .. " to " .. vnum)
+            phrKeyVals[k] = vnum
         end
     end
 end
@@ -61,6 +68,11 @@ end
 SLASH_PHSETSTRING1 = '/phss'
 SlashCmdList['PHSETSTRING'] = function(subcommandText)
     print(subcommandText)
+end
+
+SLASH_PHPRINT = '/php'
+SlashCmdList['PHSETSTRING'] = function(subcommandText)
+    print(phrKeyVals[subcommandText])
 end
 
 frame:SetScript("OnEvent", function(self, event, ...)
@@ -82,10 +94,8 @@ end
 -- * Allow other characters to view each others stored values
 -- * Character creator
 --  * example choose: 
---      warrior (+2 con or str or dex, +1 any stat, +1 any stat)
---      adventurer (+2 dex or int or cha, +1 any stat, +1 any stat)
---      scholar (+2 int or spr or cha, +1 any stat, +1 any stat)
---      expert (+3 any stat, +1 any other stat)
+--      warrior (+2 con or str or dex, +1 any stat, -1 any stat)
+--      scholar (+2 int or spr or cha, +1 any stat, -1 any stat)
 -- [str, dex, con, int, spr, cha]
 --  * or something like:
 --      All stats start at -1. 
@@ -94,17 +104,7 @@ end
 --      a skilled, impulsive fighter: 2 0 1 2 0 2
 --      
 -- * Built-in list of abilities to choose from, e.g.
--- 
--- 
--- 
--- 
--- 
--- 
--- 
--- 
--- 
--- 
--- 
--- 
--- 
--- 
+-- Scholar - Research: Gain a +1 to rolls to find information while not fighting.
+-- Scholar - Torch: Gain a +3 to your next roll to create a magical effect and -1 ongoing to all rolls until the end of the scene.
+-- Warrior - NOT TO BE FUCKED WITH: Gain a +2 to rolls to attack while greatly outnumbered. 
+-- Any - Charming: Gain a +1 to rolls to dissuade a foe from fighting.
