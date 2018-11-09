@@ -1,53 +1,131 @@
-print('Welcome to PHR, an addon for tabletop-style roleplay! Type "/phr help" for a list of commands.')  -- TODO
+print('Welcome to PHR, an addon for tabletop-style roleplay! Type "/ph" for a list of commands.')  -- TODO
 
 local frame = CreateFrame('Frame', 'PhrFrame')
 local events = {}
 
+local allowedChannels = {RAID=true, EMOTE=true, SAY=true, YELL=true, SILENT=true}
+
 function events:ADDON_LOADED(addonName)
     if addonName ~= 'PHR' then return end
 
-    print('PHR loaded')
+    print('PHR: loaded')
     if phrKeyVals ~= nil then
-        print('PHR keyvals')
+        print('PHR: phrKeyVals')
         for k, v in pairs(phrKeyVals) do
-            print('\t' .. k .. ':\t' .. v)
+            print(k .. ':' .. v)
         end
+        print()
+    else
+        print('PHR: loading default phrKeyVals')
+        phrKeyVals = {}
+    end
+
+    if phrDefaultChannel ~= nil then
+        print('PHR: phrDefaultChannel is ' .. phrDefaultChannel)
+    else
+        print('PHR: loading default phrDefaultChannel (SILENT). You might want also to try /phc RAID or /phc EMOTE')
+        phrDefaultChannel = 'SILENT'
+    end
+end
+
+local function rollDice(text)
+    -- Takes a string like "xdy" and returns a list of x rolls from 1 to y and their total value
+    -- Also returns maxRolled, which is true if one die had its maximum value rolled, and
+    -- minRolled, which is true if one die had its minimum value rolled.
+    local total_mul = 1
+    if text:sub(1, 1) == '+' then
+        text = text:sub(2)
+    elseif text:sub(1, 1) == '-' then
+        text = text:sub(2)
+        total_mul = -1
+    end
+
+    local dIndex = string.find(text, 'd') -- index of 'd' in '2d6'
+    local count = 1
+    if dIndex ~= 1 then
+        count = tonumber(text:sub(1, dIndex - 1))
+    end
+
+    local upper = tonumber(text:sub(dIndex + 1))
+    if count == nil or upper == nil then
+        print("Unable to convert " .. text .. " to numbers.")
         return
     end
 
-    print('PHR: loading defaults')
-    phrKeyVals = {}
+    local rolls = {}
+    local total = 0
+    local maxRolled, minRolled = false, false
+    for i=1,count do
+        local rolledVal = math.random(1, upper)
+        if rolledVal == upper then
+            maxRolled = true
+        end
+        if rolledVal == 1 then
+            minRolled = true
+        end
+        rolls[#rolls + 1] = rolledVal
+        total = total + rolledVal
+    end
+    return rolls, total * total_mul, maxRolled, minRolled  -- todo blue text/green text/red text for both/max/min rolls
+end
+
+local function getStoredNumber(text)
+    local total_mul = 1
+    if text:sub(1, 1) == '+' then
+        text = text:sub(2)
+    elseif text:sub(1, 1) == '-' then
+        text = text:sub(2)
+        total_mul = -1
+    end
+
+    local val = phrKeyVals[text]
+    if val == nil then
+        print('"' .. text ..'" not understood or not set with "/phs key=value".')
+        return
+    end
+    local valnum = tonumber(val)
+    if valnum == nil then
+        print('"' .. text .. '=' .. valnum'" is not a number!')
+        return
+    end
+
+    return valnum * total_mul
 end
 
 SLASH_PHROLL1 = '/phr'
 SlashCmdList['PHROLL'] = function(subcommandText)
-    outTextRolls = {}
-    total = 0
-    for text in string.gmatch(subcommandText, "%S+") do
-        if string.match(text, "%d*d%d+") then -- handles things that look like "d20", "2d20", "3d6", etc.
-            dIndex = string.find(text, 'd') -- index of 'd' in '2d6'
-            if dIndex == 1 then
-                count = 1
-            else
-                count = tonumber(text:sub(1, dIndex - 1))
-            end
+    -- Takes a Roll20-style roll/dice string like "3d6 - 3 + STR" 
+    -- and prints something like "3d6 (1, 5, 3) - 3 + STR (5) = 11"
+    -- subcommandText = subcommandText:gsub("%s+", "")
+    local outTextRolls = {}
+    local total = 0
+    for text in string.gmatch(subcommandText, "[%+%-]?[^%+%-]+") do
+        local outtext = text
+        text = text:gsub("%s+", "")
 
-            upper = tonumber(text:sub(dIndex + 1))
-            if count == nil or upper == nil then
-                print("Unable to convert " .. text .. " to numbers.")
-                return
-            end
+        if string.match(text, "[%+%-]?%d*d%d+") then -- handles things that look like "d20", "2d20", "3d6", etc.
+            local rolls, subtotal = rollDice(text)
+            total = total + subtotal
+            outTextRolls[#outTextRolls + 1] = outtext .. ' (' .. table.concat(rolls, ",") .. ')'
 
-            rolls = {}
-            for i=1,count do
-                rolledVal = math.random(1, upper)
-                rolls[#rolls + 1] = rolledVal
-                total = total + rolledVal
-            end
-            outTextRolls[#outTextRolls + 1] = text .. ' (' .. table.concat(rolls, ",") .. ')'
+        elseif string.match(text, "[%+%-]?%d") then -- handles plain numbers
+            total = total + tonumber(text)
+            outTextRolls[#outTextRolls + 1] = outtext
+
+        else -- handles stored values
+            local valnum = getStoredNumber(text)
+            total = total + valnum
+            outTextRolls[#outTextRolls + 1] = outtext .. ' (' .. valnum .. ')'
         end
     end
-    print(total .. ' = ' .. table.concat(outTextRolls, ' + '))
+
+    rollText = table.concat(outTextRolls, ' ') .. ' = ' .. total
+    rollText = rollText:gsub("%s+", " ")
+    if phrDefaultChannel == 'SILENT' then
+        print(rollText)
+    else
+        SendChatMessage(rollText, phrDefaultChannel)
+    end
 end
 
 SLASH_PHSET1 = '/phs'
@@ -68,11 +146,61 @@ end
 SLASH_PHSETSTRING1 = '/phss'
 SlashCmdList['PHSETSTRING'] = function(subcommandText)
     print(subcommandText)
+    print("This doesn't work yet.")
 end
 
-SLASH_PHPRINT = '/php'
-SlashCmdList['PHSETSTRING'] = function(subcommandText)
-    print(phrKeyVals[subcommandText])
+SLASH_PHPRINT1 = '/php'
+SlashCmdList['PHPRINT'] = function(subcommandText)
+    print(subcommandText .. "=" .. phrKeyVals[string.match(subcommandText, "%S+")])
+end
+
+SLASH_PHSETCHANNEL1 = '/phc'
+SlashCmdList['PHSETCHANNEL'] = function(subcommandText)
+    -- Sets the default channel for roll text.
+    subcommandText = phu:strip(subcommandText)
+
+    if allowedChannels[phrDefaultChannel] ~= nil then
+        phrDefaultChannel = subcommandText
+        print("Set default channel for rolls to '" .. phu:strip(subcommandText) .. "'.")
+    else
+        print("Currently only the following channels are supported: ")
+        for chan, _ in pairs(allowedChannels) do
+            print(chan)
+        end
+    end
+end
+
+SLASH_PHPHY1 = '/phy'
+SlashCmdList['PHPHY'] = function(subcommandText)
+    -- Easter eggs!
+    eggs = {}
+    eggs[#eggs + 1] = "Kimbee and Brela Songdew will be avenged!"
+    eggs[#eggs + 1] = "Glarr'glarr cried while watching Click."
+    eggs[#eggs + 1] = "Nobody reads your TRP."
+    eggs[#eggs + 1] = "I'm reading your TRP."
+    eggs[#eggs + 1] = "Try calling Strom 'Storm'! Then don't."
+    eggs[#eggs + 1] = "Basic Campfire for Warchief!"
+    eggs[#eggs + 1] = "Glad you could bake it, Uther."
+    eggs[#eggs + 1] = "As if I could forgetti. Listen, Uther, there's something about the plaguette you should knead."
+    eggs[#eggs + 1] = "You are not my chef yet, boyardee. Nor would I obey that command if you were!"
+    eggs[#eggs + 1] = "BRAH BRAH OI OI OI GOR'WATHA!"
+    eggs[#eggs + 1] = "We will never forget the pizza incident."
+    eggs[#eggs + 1] = "Adventure. Romance. Ejaculating live bees and the bees are angry."
+    eggs[#eggs + 1] = [[I TOO HAVE PROVED MY WORTH, ODYN! I AM GOD-KING SKOVALD! THESE MORTALS DARE NOT CHALLENGE MY CLAIM TO THE AEGIS! 
+IF THESE FALSE CHAMPIONS WILL NOT YIELD THE AEGIS BY CHOICE THEN THEY WILL SURRENDER IT IN DEATH! GIVE UP THE AEGIS OR DIE!]]
+    eggs[#eggs + 1] = [[Long ago, in a distant land, I, Andrew, the shapeshifting master of darkness, unleashed an UNSPEAKABLE evil--
+but a foolish orc warrior wielding a magic sword stepped forth to oppose me.]]
+    eggs[#eggs + 1] = "PHR doesn't really stand for anything."
+    eggs[#eggs + 1] = "Two elves, chilling in a moonwell, five feet apart 'cause they're not gay!"
+    eggs[#eggs + 1] = [[Look, having fel — my uncle was a great professor and arcanist and enchanter, Dr. Jarod Tarelvir at ZIT; noble blood, very noble blood, OK, very smart, Nar’thalas Academy, very good, very smart -]]
+    -- eggs[#eggs + 1] = [[You know, if you’re a Duskwatch loyalist, if I were a rebel, if, like, OK, if I ran as a Nightfallen rebel, they would say I’m one of the smartest people anywhere on Azeroth — it’s true! — but...]] 
+    -- eggs[#eggs + 1] = [[But when you’re a loyalist they try — oh, do they do a number — that’s why I always start off: Went to Nar’thalas, was a good student, went there, went there, did this, built a fortune — ]] 
+    -- eggs[#eggs + 1] = [[You know I have to give my like credentials all the time, because we’re a little disadvantaged — but you look at the Legion deal, the thing that really bothers me — it would have been so easy, and it’s not as important as these lives are — ]]
+    eggs[#eggs + 1] = [[Fel is powerful; my uncle explained that to me many, many years ago, the power and that was 10,000 years ago; he would explain the power of what’s going to happen and he was right, who would have thought?]]
+    -- eggs[#eggs + 1] = [[But when you look at what’s going on with the four races of elves — now it used to be three, now it’s four — but when it was three and even now, I would have said it’s all in the messenger, ]] 
+    -- eggs[#eggs + 1] = [[Arcanists, and it is arcanists because, you know, they don’t, they haven’t figured that the warlocks are smarter right now than the mages, so, you know, it’s gonna take them about another 10,000 years — ]] 
+    -- eggs[#eggs + 1] = [[But the Eredar are great negotiators, the Legion are great negotiators, so, and they, they just killed, they just killed us.]]
+    print(eggs[math.random(1, #eggs)])
 end
 
 frame:SetScript("OnEvent", function(self, event, ...)
@@ -83,15 +211,13 @@ for k, v in pairs(events) do
 end
 
 -- ### Roadmap
--- * Save a user-defined number with /phs key value
+-- * Color crits and crit fails and mixed crit/fails
+-- * More pretty colors
 -- * Save a user-defined string with /phss key value
--- * Print a user-defined value with /php key
--- * Roll a die with /phr d20 -> /e rolls d20: 19! (19)
--- * Roll two dice with /phr 2d20 -> /e rolls 2d20: 16! (10 + 6)
--- * Roll dice with modifiers /phr d20 + 1 - 3 -> /e rolls d20 + 1 - 3: 10! (12 + 1 - 3)
--- * Roll dice using stored modifiers
+-- * Document all the commands!
 -- * Frame which displays all stored values
 -- * Allow other characters to view each others stored values
+-- * Some kind of HP bar?
 -- * Character creator
 --  * example choose: 
 --      warrior (+2 con or str or dex, +1 any stat, -1 any stat)
