@@ -4,7 +4,8 @@ Welcome to PHR, an addon for tabletop-style roleplay in World of Warcraft!
 Currently, it simply provides a system for rolling and outputting dice rolls.
 For example:
 
-```/phc SAY
+```
+/phc SAY
 /phs INT=2
 /phr 3d6 + INT - 1
 ```
@@ -13,7 +14,9 @@ Will set the output channel to SAY, set the saved value "INT" to 2, and roll
 three six-sided dice, add 2, and subtract 1 from it. Your character will say
 something like:
 
+```
 "9 = 3d6 (4,3,1) + INT (2) - 1"
+```
 
 ### Installation from GitHub
 
