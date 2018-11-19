@@ -8,15 +8,19 @@ local allowedChannels = {RAID=true, EMOTE=true, SAY=true, YELL=true, SILENT=true
 function events:ADDON_LOADED(addonName)
     if addonName ~= 'PHR' then return end
 
-    print('PHR: loaded')
+    if phDebug == nil then
+        phDebug = false
+    end
+
+    phu:log('PHR: loaded')
     if phrKeyVals ~= nil then
-        print('PHR: phrKeyVals')
+        phu:log('PHR: phrKeyVals')
         for k, v in pairs(phrKeyVals) do
-            print(k .. ':' .. v)
+            phu:log(k .. ':' .. v)
         end
-        print()
+        phu:log()
     else
-        print('PHR: loading default phrKeyVals')
+        phu:log('PHR: loading default phrKeyVals')
         phrKeyVals = {}
     end
 
@@ -92,6 +96,18 @@ local function getStoredNumber(text)
     return valnum * total_mul
 end
 
+SLASH_PHHELP1 = '/ph'
+SlashCmdList['PHHELP'] = function(subcommandText)
+    print('PHR version 0.0.1, developed by Attenius.\n')
+    print([[/phr -- Rolls dice using dice specifiers, numbers, and named modifiers stored beforehand. \
+"/phr 3d20 - 4 + INT" will roll three 20-sided dice, subtract 4, and add the number stored as \
+"INT" (using /phs) to the result.]])
+    print([[/phs -- Set a named value. "/phs AGI=-2" will store the value -2 with the key "AGI". \
+When you add AGI to a roll, -2 will be substituted in. These values are stored per-character.]])
+    print([[/phc -- Set the output channel for rolls and easter egg text. "/phc EMOTE" will cause rolls to be output as \
+emotes. Available values are SILENT (only you will see the result), SAY, RAID, EMOTE and YELL.]])
+end
+
 SLASH_PHROLL1 = '/phr'
 SlashCmdList['PHROLL'] = function(subcommandText)
     -- Takes a Roll20-style roll/dice string like "3d6 - 3 + STR" 
@@ -154,6 +170,15 @@ SlashCmdList['PHPRINT'] = function(subcommandText)
     print(subcommandText .. "=" .. phrKeyVals[string.match(subcommandText, "%S+")])
 end
 
+SLASH_PHDEBUG1 = '/phdebug'
+SlashCmdList['PHPRINT'] = function(subcommandText)
+    if subcommandText == '1' then
+        phDebug = true
+    else
+        phDebug = false
+    end
+end
+
 SLASH_PHSETCHANNEL1 = '/phc'
 SlashCmdList['PHSETCHANNEL'] = function(subcommandText)
     -- Sets the default channel for roll text.
@@ -175,32 +200,35 @@ SlashCmdList['PHPHY'] = function(subcommandText)
     -- Easter eggs!
     eggs = {}
     eggs[#eggs + 1] = "Kimbee and Brela Songdew will be avenged!"
-    eggs[#eggs + 1] = "Glarr'glarr cried while watching Click."
     eggs[#eggs + 1] = "Nobody reads your TRP."
     eggs[#eggs + 1] = "I'm reading your TRP."
-    eggs[#eggs + 1] = "Try calling Strom 'Storm'! Then don't."
     eggs[#eggs + 1] = "Basic Campfire for Warchief!"
-    eggs[#eggs + 1] = "Glad you could bake it, Uther."
     eggs[#eggs + 1] = "As if I could forgetti. Listen, Uther, there's something about the plaguette you should knead."
     eggs[#eggs + 1] = "You are not my chef yet, boyardee. Nor would I obey that command if you were!"
     eggs[#eggs + 1] = "BRAH BRAH OI OI OI GOR'WATHA!"
     eggs[#eggs + 1] = "We will never forget the pizza incident."
     eggs[#eggs + 1] = "Adventure. Romance. Ejaculating live bees and the bees are angry."
-    eggs[#eggs + 1] = [[I TOO HAVE PROVED MY WORTH, ODYN! I AM GOD-KING SKOVALD! THESE MORTALS DARE NOT CHALLENGE MY CLAIM TO THE AEGIS! 
-IF THESE FALSE CHAMPIONS WILL NOT YIELD THE AEGIS BY CHOICE THEN THEY WILL SURRENDER IT IN DEATH! GIVE UP THE AEGIS OR DIE!]]
-    eggs[#eggs + 1] = [[Long ago, in a distant land, I, Andrew, the shapeshifting master of darkness, unleashed an UNSPEAKABLE evil--
-but a foolish orc warrior wielding a magic sword stepped forth to oppose me.]]
-    eggs[#eggs + 1] = "PHR doesn't really stand for anything."
+    eggs[#eggs + 1] = "IF THESE FALSE CHAMPIONS WILL NOT YIELD THE AEGIS BY CHOICE THEN THEY WILL SURRENDER IT IN DEATH! GIVE UP THE AEGIS OR DIE!"
+    eggs[#eggs + 1] = "Long ago, in a distant land, I, Andrew, the shapeshifting master of darkness, unleashed an UNSPEAKABLE evil--"
+    eggs[#eggs + 1] = "--but a foolish orc warrior wielding a magic sword stepped forth to oppose me."
     eggs[#eggs + 1] = "Two elves, chilling in a moonwell, five feet apart 'cause they're not gay!"
-    eggs[#eggs + 1] = [[Look, having fel — my uncle was a great professor and arcanist and enchanter, Dr. Jarod Tarelvir at ZIT; noble blood, very noble blood, OK, very smart, Nar’thalas Academy, very good, very smart -]]
+    eggs[#eggs + 1] = "Glarr'glarr cried while watching Click."
+    -- eggs[#eggs + 1] = [[Look, having fel — my uncle was a great professor and arcanist and enchanter, Dr. Jarod Tarelvir at ZIT; noble blood, 
+-- very noble blood, OK, very smart, Nar’thalas Academy, very good, very smart -]]
     -- eggs[#eggs + 1] = [[You know, if you’re a Duskwatch loyalist, if I were a rebel, if, like, OK, if I ran as a Nightfallen rebel, they would say I’m one of the smartest people anywhere on Azeroth — it’s true! — but...]] 
     -- eggs[#eggs + 1] = [[But when you’re a loyalist they try — oh, do they do a number — that’s why I always start off: Went to Nar’thalas, was a good student, went there, went there, did this, built a fortune — ]] 
     -- eggs[#eggs + 1] = [[You know I have to give my like credentials all the time, because we’re a little disadvantaged — but you look at the Legion deal, the thing that really bothers me — it would have been so easy, and it’s not as important as these lives are — ]]
-    eggs[#eggs + 1] = [[Fel is powerful; my uncle explained that to me many, many years ago, the power and that was 10,000 years ago; he would explain the power of what’s going to happen and he was right, who would have thought?]]
+    -- eggs[#eggs + 1] = [[Fel is powerful; my uncle explained that to me many, many years ago, the power and that was 10,000 years ago; he 
+-- would explain the power of what’s going to happen and he was right, who would have thought?]]
     -- eggs[#eggs + 1] = [[But when you look at what’s going on with the four races of elves — now it used to be three, now it’s four — but when it was three and even now, I would have said it’s all in the messenger, ]] 
     -- eggs[#eggs + 1] = [[Arcanists, and it is arcanists because, you know, they don’t, they haven’t figured that the warlocks are smarter right now than the mages, so, you know, it’s gonna take them about another 10,000 years — ]] 
     -- eggs[#eggs + 1] = [[But the Eredar are great negotiators, the Legion are great negotiators, so, and they, they just killed, they just killed us.]]
-    print(eggs[math.random(1, #eggs)])
+
+    if phrDefaultChannel == 'SILENT' then
+        print(eggs[math.random(1, #eggs)])
+    else
+        SendChatMessage(eggs[math.random(1, #eggs)], phrDefaultChannel)
+    end
 end
 
 frame:SetScript("OnEvent", function(self, event, ...)
@@ -215,22 +243,5 @@ end
 -- * More pretty colors
 -- * Save a user-defined string with /phss key value
 -- * Document all the commands!
--- * Frame which displays all stored values
--- * Allow other characters to view each others stored values
--- * Some kind of HP bar?
--- * Character creator
---  * example choose: 
---      warrior (+2 con or str or dex, +1 any stat, -1 any stat)
---      scholar (+2 int or spr or cha, +1 any stat, -1 any stat)
--- [str, dex, con, int, spr, cha]
---  * or something like:
---      All stats start at -1. 
---      Distribute 9 points between your stats. No stat can have higher than +2.
---      a charismatic wizard: -1 0 1 2 0 2
---      a skilled, impulsive fighter: 2 0 1 2 0 2
---      
--- * Built-in list of abilities to choose from, e.g.
--- Scholar - Research: Gain a +1 to rolls to find information while not fighting.
--- Scholar - Torch: Gain a +3 to your next roll to create a magical effect and -1 ongoing to all rolls until the end of the scene.
--- Warrior - NOT TO BE FUCKED WITH: Gain a +2 to rolls to attack while greatly outnumbered. 
--- Any - Charming: Gain a +1 to rolls to dissuade a foe from fighting.
+-- * Character sheet UI
+-- * Allow other characters to view each others' character sheets

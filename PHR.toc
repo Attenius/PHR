@@ -2,7 +2,7 @@
 ## Title: PHR
 ## Author: Attenius
 ## Version: 0.0.1
-## SavedVariablesPerCharacter: phrKeyVals, phrDefaultChannel
+## SavedVariablesPerCharacter: phrKeyVals, phrDefaultChannel, phDebug
 
 phrutil.lua
 main.lua
