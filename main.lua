@@ -241,7 +241,5 @@ end
 -- ### Roadmap
 -- * Color crits and crit fails and mixed crit/fails
 -- * More pretty colors
--- * Save a user-defined string with /phss key value
--- * Document all the commands!
 -- * Character sheet UI
 -- * Allow other characters to view each others' character sheets
