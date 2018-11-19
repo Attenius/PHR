@@ -5,6 +5,9 @@ function phu:strip(s)
 end
 
 function phu:log(s, level)
+    if s == nil then
+        s = ''
+    end
     if level == nil then
         level = 'DEBUG'
     end

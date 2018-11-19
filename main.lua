@@ -171,11 +171,13 @@ SlashCmdList['PHPRINT'] = function(subcommandText)
 end
 
 SLASH_PHDEBUG1 = '/phdebug'
-SlashCmdList['PHPRINT'] = function(subcommandText)
+SlashCmdList['PHDEBUG'] = function(subcommandText)
     if subcommandText == '1' then
         phDebug = true
+        print('Debug logging enabled.')
     else
         phDebug = false
+        print('Debug logging disabled.')
     end
 end
 
